@@ -14,6 +14,7 @@
   },
   "scripts": {
     "server": "node-env-run server --exec nodemon | pino-colada",
+    "behappy": "node-env-run behappy --exec nodemon | pino-colada",
     "dev": "run-p server start"
   },
   "browserslist": {

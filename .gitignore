@@ -332,3 +332,7 @@ samples/js/**/microsoft.cognitiveservices.speech.sdk.bundle*.js*
 
 # iOS framwork
 samples/objective-c/ios/MicrosoftCognitiveServicesSpeech.framework/
+
+# environment files
+.env
+**/.env

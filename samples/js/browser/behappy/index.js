@@ -1,0 +1,156 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT license.
+// <disable>JS1001.SyntaxError</disable>
+(function () {
+    "use strict";
+
+    // pull in the required packages.
+    require('dotenv').config();
+    const express = require('express');
+    const path = require('path');
+    const axios = require('axios');
+    const bodyParser = require('body-parser');
+    const pino = require('express-pino-logger')();
+    const cors = require('cors');
+    const public_dir = 'public'
+
+    const app = express();
+    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(pino);
+    // CORS options
+    const corsOptions = {
+        origin: ['http://localhost:3001', 'https://*.windows.net', 'https://*.microsoft.com', 'wss://*.microsoft.com'] // Add other domains as needed
+    };
+    app.use(cors(corsOptions));
+    app.use(express.raw({ type: () => true, limit: '5mb' }));
+    app.use(express.static(path.join(__dirname, public_dir)));
+    app.use(express.json());
+
+    app.get('/api/get-speech-token', async (req, res, next) => {
+        res.setHeader('Content-Type', 'application/json');
+        const speechKey = process.env.SPEECH_KEY;
+        const speechRegion = process.env.SPEECH_REGION;
+
+        if (speechKey === 'paste-your-speech-key-here' || speechRegion === 'paste-your-speech-region-here') {
+            res.status(400).send('You forgot to add your speech key or region to the .env file.');
+        } else {
+            const headers = { 
+                headers: {
+                    'Ocp-Apim-Subscription-Key': speechKey,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            };
+
+            try {
+                const tokenResponse = await axios.post(`https://${speechRegion}.api.cognitive.microsoft.com/sts/v1.0/issueToken`, null, headers);
+                res.send({ token: tokenResponse.data, region: speechRegion });
+            } catch (err) {
+                res.status(401).send('There was an error authorizing your speech key.');
+            }
+        }
+    });
+
+    app.get('/api/get-tts-relay-token', async (req, res, next) => {
+        res.setHeader('Content-Type', 'application/json');
+        const speechKey = process.env.SPEECH_KEY;
+        const speechRegion = process.env.SPEECH_REGION;
+
+        if (speechKey === 'paste-your-speech-key-here' || speechRegion === 'paste-your-speech-region-here') {
+            res.status(400).send('You forgot to add your speech key or region to the .env file.');
+        } else {
+            const headers = { 
+                headers: {
+                    'Ocp-Apim-Subscription-Key': speechKey,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            };
+
+            try {
+                const tokenResponse = await axios.get(`https://${speechRegion}.tts.speech.microsoft.com/cognitiveservices/avatar/relay/token/v1`, headers);
+                res.send({ ...tokenResponse.data, region: speechRegion });
+            } catch (err) {
+                res.status(401).send('There was an error authorizing your speech key.');
+            }
+        }
+    });
+    
+    app.post('/oai/*', (req, res) => {
+        // Options for the HTTPS request
+        const options = {
+            hostname: oaiUrl,  // Set this to your target hostname
+            port: 443,
+            path: req.originalUrl,  // Use the same URL as the one called on the proxy
+            method: 'POST',
+            headers: req.headers,
+        };
+    
+        // Create the HTTPS request
+        const proxyRequest = https.request(options, (proxyResponse) => {
+            // Set headers and status code from the proxied response
+            res.writeHead(proxyResponse.statusCode, proxyResponse.headers);
+            // Pipe response back to the original client
+            proxyResponse.pipe(res);
+        });
+    
+        // Handle proxy errors
+        proxyRequest.on('error', (error) => {
+            console.error(`Error with proxy request: ${error.message}`);
+            res.status(500).send(`Error communicating with target server: ${error.message}`);
+        });
+    
+        // Pipe the incoming request body to the proxy request
+        req.pipe(proxyRequest);
+    });
+
+    // Endpoint to serve behappy.html
+    app.get('/behappy', function(req, res) {
+        console.log('Serving behappy.html' + __dirname);
+        res.sendFile(path.join(__dirname, public_dir, 'behappy.html'));
+    });
+
+    app.post('/oaichat', (req, res) => {
+        const oaiUrl = process.env.OPENAI_ENDPOINT;
+        const oaiKey = process.env.OPENAI_API_KEY;
+        const oaiModel = process.env.OPENAI_DEPLOYMENT_NAME;
+        const API_URL = `${oaiUrl}/openai/deployments/${oaiModel}/chat/completions?api-version=2023-06-01-preview`
+
+        // Set up the options for the HTTPS request to the other API
+        axios({
+            method: 'post',
+            url: API_URL,
+            headers:{
+                'api-key': oaiKey,
+                'Content-Type': 'application/json'
+            
+            },
+            data: req.body,
+            responseType: 'stream'  // This ensures the response is treated as a stream
+        })
+        .then(response => {
+            // Setting response headers
+            res.set(response.headers);
+            
+            // Status code forwarding
+            res.status(response.status);
+            
+            // Stream the response body directly to the client
+            response.data.pipe(res);
+        })
+        .catch(error => {
+            // Error handling
+            console.error('Error making API request:', error.message);
+            res.status(500).send('Failed to communicate with the API');
+        });
+    });
+    
+    // Add this to catch any request not handled by static or other routes
+    app.use((req, res, next) => {
+        console.log(`Resource not found: ${req.url}`);
+        res.status(404).send('Not found');
+    });
+
+    app.listen(3001, () => {
+        console.log('Express server is running on localhost:3001');
+    });
+}());
+// </disable>
