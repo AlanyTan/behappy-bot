@@ -12,7 +12,8 @@
     const bodyParser = require('body-parser');
     const pino = require('express-pino-logger')();
     const cors = require('cors');
-    const public_dir = 'public'
+    const public_dir = 'public';
+    const system_prompt = require('./system_prompt');
 
     const app = express();
     app.use(bodyParser.urlencoded({ extended: false }));
@@ -73,34 +74,6 @@
             }
         }
     });
-    
-    app.post('/oai/*', (req, res) => {
-        // Options for the HTTPS request
-        const options = {
-            hostname: oaiUrl,  // Set this to your target hostname
-            port: 443,
-            path: req.originalUrl,  // Use the same URL as the one called on the proxy
-            method: 'POST',
-            headers: req.headers,
-        };
-    
-        // Create the HTTPS request
-        const proxyRequest = https.request(options, (proxyResponse) => {
-            // Set headers and status code from the proxied response
-            res.writeHead(proxyResponse.statusCode, proxyResponse.headers);
-            // Pipe response back to the original client
-            proxyResponse.pipe(res);
-        });
-    
-        // Handle proxy errors
-        proxyRequest.on('error', (error) => {
-            console.error(`Error with proxy request: ${error.message}`);
-            res.status(500).send(`Error communicating with target server: ${error.message}`);
-        });
-    
-        // Pipe the incoming request body to the proxy request
-        req.pipe(proxyRequest);
-    });
 
     // Endpoint to serve behappy.html
     app.get('/behappy', function(req, res) {
@@ -115,6 +88,12 @@
         const API_URL = `${oaiUrl}/openai/deployments/${oaiModel}/chat/completions?api-version=2023-06-01-preview`
 
         // Set up the options for the HTTPS request to the other API
+        const old_body = JSON.parse(req.body.toString())
+        const new_body = {
+            messages: [system_prompt,...old_body.messages],
+            stream: true
+        }
+
         axios({
             method: 'post',
             url: API_URL,
@@ -123,7 +102,7 @@
                 'Content-Type': 'application/json'
             
             },
-            data: req.body,
+            data: new_body,
             responseType: 'stream'  // This ensures the response is treated as a stream
         })
         .then(response => {
@@ -149,8 +128,8 @@
         res.status(404).send('Not found');
     });
 
-    app.listen(3001, () => {
-        console.log('Express server is running on localhost:3001');
+    app.listen(8080, () => {
+        console.log('Express server is running on localhost:8080');
     });
 }());
 // </disable>

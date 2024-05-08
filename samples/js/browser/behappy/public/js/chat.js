@@ -19,14 +19,6 @@ var lastSpeakTime
 
 // Connect to avatar service
 function connectAvatar() {
-    //const cogSvcRegion = document.getElementById('region').value
-    //const cogSvcSubKey = document.getElementById('subscriptionKey').value
-    const cogSvcRegion = 'westeurope'
-    const cogSvcSubKey = 'b30fae11d0c649d19d7c97d467582eef'
-    if (cogSvcSubKey === '') {
-        alert('Please fill in the subscription key of your speech resource.')
-        return
-    }
 
     //const privateEndpointEnabled = document.getElementById('enablePrivateEndpoint').checked
     const privateEndpointEnabled = false
@@ -36,83 +28,89 @@ function connectAvatar() {
         return
     }
 
-    let speechSynthesisConfig
-    if (privateEndpointEnabled) {
-        speechSynthesisConfig = SpeechSDK.SpeechConfig.fromEndpoint(new URL(`wss://${privateEndpoint}/tts/cognitiveservices/websocket/v1?enableTalkingAvatar=true`), cogSvcSubKey) 
-    } else {
-        speechSynthesisConfig = SpeechSDK.SpeechConfig.fromSubscription(cogSvcSubKey, cogSvcRegion)
-    }
-    speechSynthesisConfig.endpointId = document.getElementById('customVoiceEndpointId').value
-
-    const talkingAvatarCharacter = document.getElementById('talkingAvatarCharacter').value
-    const talkingAvatarStyle = document.getElementById('talkingAvatarStyle').value
-    const avatarConfig = new SpeechSDK.AvatarConfig(talkingAvatarCharacter, talkingAvatarStyle)
-    avatarConfig.customized = document.getElementById('customizedAvatar').checked
-    avatarSynthesizer = new SpeechSDK.AvatarSynthesizer(speechSynthesisConfig, avatarConfig)
-    avatarSynthesizer.avatarEventReceived = function (s, e) {
-        var offsetMessage = ", offset from session start: " + e.offset / 10000 + "ms."
-        if (e.offset === 0) {
-            offsetMessage = ""
-        }
-
-        console.log("Event received: " + e.description + offsetMessage)
-    }
-
-    const speechRecognitionConfig = SpeechSDK.SpeechConfig.fromEndpoint(new URL(`wss://${cogSvcRegion}.stt.speech.microsoft.com/speech/universal/v2`), cogSvcSubKey)
-    speechRecognitionConfig.setProperty(SpeechSDK.PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous")
-    var sttLocales = document.getElementById('sttLocales').value.split(',')
-    var autoDetectSourceLanguageConfig = SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages(sttLocales)
-    speechRecognizer = SpeechSDK.SpeechRecognizer.FromConfig(speechRecognitionConfig, autoDetectSourceLanguageConfig, SpeechSDK.AudioConfig.fromDefaultMicrophoneInput())
-
-    const azureOpenAIEndpoint = document.getElementById('azureOpenAIEndpoint').value
-    const azureOpenAIApiKey = document.getElementById('azureOpenAIApiKey').value
-    const azureOpenAIDeploymentName = document.getElementById('azureOpenAIDeploymentName').value
-
-    // if (azureOpenAIEndpoint === '' || azureOpenAIApiKey === '' || azureOpenAIDeploymentName === '') {
-    //     alert('Please fill in the Azure OpenAI endpoint, API key and deployment name.')
-    //     return
-    // }
-
-    dataSources = []
-    if (document.getElementById('enableOyd').checked) {
-        const azureCogSearchEndpoint = document.getElementById('azureCogSearchEndpoint').value
-        const azureCogSearchApiKey = document.getElementById('azureCogSearchApiKey').value
-        const azureCogSearchIndexName = document.getElementById('azureCogSearchIndexName').value
-        if (azureCogSearchEndpoint === "" || azureCogSearchApiKey === "" || azureCogSearchIndexName === "") {
-            alert('Please fill in the Azure Cognitive Search endpoint, API key and index name.')
-            return
-        } else {
-            setDataSources(azureCogSearchEndpoint, azureCogSearchApiKey, azureCogSearchIndexName)
-        }
-    }
-
-    // Only initialize messages once
-    if (!messageInitiated) {
-        initMessages()
-        messageInitiated = true
-    }
-
-    document.getElementById('startSession').disabled = true
-    document.getElementById('configuration').hidden = true
-
-    const xhr = new XMLHttpRequest()
-    if (privateEndpointEnabled) {
-        xhr.open("GET", `https://${privateEndpoint}/tts/cognitiveservices/avatar/relay/token/v1`)
-    } else {
-        //xhr.open("GET", `https://${cogSvcRegion}.tts.speech.microsoft.com/cognitiveservices/avatar/relay/token/v1`)
-        xhr.open("GET","/api/get-tts-relay-token")
-    }
-    xhr.setRequestHeader("Ocp-Apim-Subscription-Key", cogSvcSubKey)
-    xhr.addEventListener("readystatechange", function() {
-        if (this.readyState === 4) {
-            const responseData = JSON.parse(this.responseText)
-            const iceServerUrl = responseData.Urls[0]
-            const iceServerUsername = responseData.Username
-            const iceServerCredential = responseData.Password
-            setupWebRTC(iceServerUrl, iceServerUsername, iceServerCredential)
+    url = "/api/get-speech-token"
+    fetch(url, {
+        method: 'GET',
+        headers:{
+            'Content-Type': 'application/json'
         }
     })
-    xhr.send()
+    .then(response => response.json())
+    .then(data => {
+        token = data.token
+        region = data.region
+        console.log(`token is now: ${token}, region is now: ${region}`)
+        let speechSynthesisConfig
+        speechSynthesisConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region)
+        speechSynthesisConfig.endpointId = document.getElementById('customVoiceEndpointId').value
+
+        const talkingAvatarCharacter = document.getElementById('talkingAvatarCharacter').value
+        const talkingAvatarStyle = document.getElementById('talkingAvatarStyle').value
+        const avatarConfig = new SpeechSDK.AvatarConfig(talkingAvatarCharacter, talkingAvatarStyle)
+        avatarConfig.customized = document.getElementById('customizedAvatar').checked
+        avatarSynthesizer = new SpeechSDK.AvatarSynthesizer(speechSynthesisConfig, avatarConfig)
+        avatarSynthesizer.avatarEventReceived = function (s, e) {
+            var offsetMessage = ", offset from session start: " + e.offset / 10000 + "ms."
+            if (e.offset === 0) {
+                offsetMessage = ""
+            }
+
+            console.log("Event received: " + e.description + offsetMessage)
+        }
+
+        const speechRecognitionConfig = SpeechSDK.SpeechConfig.fromEndpoint(new URL(`wss://${region}.stt.speech.microsoft.com/speech/universal/v2`), '')
+        speechRecognitionConfig.setProperty(SpeechSDK.PropertyId.SpeechServiceAuthorization_Token,token)
+        speechRecognitionConfig.setProperty(SpeechSDK.PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous")
+        var sttLocales = document.getElementById('sttLocales').value.split(',')
+        var autoDetectSourceLanguageConfig = SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages(sttLocales)
+        speechRecognizer = SpeechSDK.SpeechRecognizer.FromConfig(speechRecognitionConfig, autoDetectSourceLanguageConfig, SpeechSDK.AudioConfig.fromDefaultMicrophoneInput())
+
+        const azureOpenAIEndpoint = document.getElementById('azureOpenAIEndpoint').value
+        const azureOpenAIApiKey = document.getElementById('azureOpenAIApiKey').value
+        const azureOpenAIDeploymentName = document.getElementById('azureOpenAIDeploymentName').value
+
+        // if (azureOpenAIEndpoint === '' || azureOpenAIApiKey === '' || azureOpenAIDeploymentName === '') {
+        //     alert('Please fill in the Azure OpenAI endpoint, API key and deployment name.')
+        //     return
+        // }
+
+        dataSources = []
+        if (document.getElementById('enableOyd').checked) {
+            const azureCogSearchEndpoint = document.getElementById('azureCogSearchEndpoint').value
+            const azureCogSearchApiKey = document.getElementById('azureCogSearchApiKey').value
+            const azureCogSearchIndexName = document.getElementById('azureCogSearchIndexName').value
+            if (azureCogSearchEndpoint === "" || azureCogSearchApiKey === "" || azureCogSearchIndexName === "") {
+                alert('Please fill in the Azure Cognitive Search endpoint, API key and index name.')
+                return
+            } else {
+                setDataSources(azureCogSearchEndpoint, azureCogSearchApiKey, azureCogSearchIndexName)
+            }
+        }
+
+        // Only initialize messages once
+        if (!messageInitiated) {
+            initMessages()
+            messageInitiated = true
+        }
+
+        document.getElementById('startSession').disabled = true
+        document.getElementById('configuration').hidden = true
+
+        const xhr = new XMLHttpRequest()
+        xhr.open("GET","/api/get-tts-relay-token")
+        
+        xhr.setRequestHeader("Ocp-Apim-Subscription-Key", '')
+        xhr.addEventListener("readystatechange", function() {
+            if (this.readyState === 4) {
+                const responseData = JSON.parse(this.responseText)
+                const iceServerUrl = responseData.Urls[0]
+                const iceServerUsername = responseData.Username
+                const iceServerCredential = responseData.Password
+                setupWebRTC(iceServerUrl, iceServerUsername, iceServerCredential)
+            }
+        })
+        xhr.send()
+    })
 }
 
 // Disconnect from avatar service

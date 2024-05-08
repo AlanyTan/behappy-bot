@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/b03a1018-bc08-4c00-8f26-c65f9f7689bf/resourceGroups/RG_behappymvp01/providers/Microsoft.Web/sites/behappymvp01",
+    "appService.deploySubpath": "samples/js/browser"
+}
