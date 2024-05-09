@@ -376,8 +376,9 @@ function handleUserQuery(userQuery) {
     if (chatHistoryTextArea.innerHTML !== '' && !chatHistoryTextArea.innerHTML.endsWith('\n\n')) {
         chatHistoryTextArea.innerHTML += '\n\n'
     }
-
-    chatHistoryTextArea.innerHTML += "User: " + userQuery + '\n\n'
+    if (userQuery != '') {
+        chatHistoryTextArea.innerHTML += "You: " + userQuery + '\n\n'
+    }
     chatHistoryTextArea.scrollTop = chatHistoryTextArea.scrollHeight
 
     // Stop previous speaking if there is any
@@ -431,7 +432,7 @@ function handleUserQuery(userQuery) {
         }
 
         let chatHistoryTextArea = document.getElementById('chatHistory')
-        chatHistoryTextArea.innerHTML += 'Assistant: '
+        chatHistoryTextArea.innerHTML += 'BeHappy: '
 
         const reader = response.body.getReader()
 

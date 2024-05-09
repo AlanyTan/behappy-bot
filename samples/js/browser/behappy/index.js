@@ -18,7 +18,8 @@
     const app = express();
     app.use(bodyParser.urlencoded({ extended: false }));
     app.use(pino);
-    // CORS options
+
+    // CORS options to allow microsoft resources
     const corsOptions = {
         origin: ['http://localhost:3001', 'https://*.windows.net', 'https://*.microsoft.com', 'wss://*.microsoft.com'] // Add other domains as needed
     };
@@ -81,6 +82,7 @@
         res.sendFile(path.join(__dirname, public_dir, 'behappy.html'));
     });
 
+    // Endpoint to chat with OpenAI chat endpoint
     app.post('/oaichat', (req, res) => {
         const oaiUrl = process.env.OPENAI_ENDPOINT;
         const oaiKey = process.env.OPENAI_API_KEY;
@@ -124,7 +126,7 @@
     
     // Add this to catch any request not handled by static or other routes
     app.use((req, res, next) => {
-        console.log(`Resource not found: ${req.url}`);
+        console.log(`User requested unknown resource: ${req.url}`);
         res.status(404).send('Not found');
     });
 
