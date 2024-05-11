@@ -83,7 +83,7 @@
     });
 
     // Endpoint to chat with OpenAI chat endpoint
-    app.post('/oaichat', (req, res) => {
+    app.post('/api/oaichat', (req, res) => {
         const oaiUrl = process.env.OPENAI_ENDPOINT;
         const oaiKey = process.env.OPENAI_API_KEY;
         const oaiModel = process.env.OPENAI_DEPLOYMENT_NAME;

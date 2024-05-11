@@ -68,14 +68,6 @@ function connectAvatar() {
         var autoDetectSourceLanguageConfig = SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages(sttLocales)
         speechRecognizer = SpeechSDK.SpeechRecognizer.FromConfig(speechRecognitionConfig, autoDetectSourceLanguageConfig, SpeechSDK.AudioConfig.fromDefaultMicrophoneInput())
 
-        const azureOpenAIEndpoint = document.getElementById('azureOpenAIEndpoint').value
-        const azureOpenAIApiKey = document.getElementById('azureOpenAIApiKey').value
-        const azureOpenAIDeploymentName = document.getElementById('azureOpenAIDeploymentName').value
-
-        // if (azureOpenAIEndpoint === '' || azureOpenAIApiKey === '' || azureOpenAIDeploymentName === '') {
-        //     alert('Please fill in the Azure OpenAI endpoint, API key and deployment name.')
-        //     return
-        // }
 
         dataSources = []
         if (document.getElementById('enableOyd').checked) {
@@ -398,7 +390,7 @@ function handleUserQuery(userQuery) {
         speak(getQuickReply(), 2000)
     }
 
-    let url = "/oaichat"
+    let url = "/api/oaiassistant"
     let body = JSON.stringify({
         messages: messages,
         stream: true
@@ -444,9 +436,9 @@ function handleUserQuery(userQuery) {
                     // Stream complete
                     return
                 }
-
                 // Process the chunk of data (value)
                 let chunkString = new TextDecoder().decode(value, { stream: true })
+                
                 if (previousChunkString !== '') {
                     // Concatenate the previous chunk string in case it is incomplete
                     chunkString = previousChunkString + chunkString
@@ -454,43 +446,52 @@ function handleUserQuery(userQuery) {
 
                 if (!chunkString.endsWith('}\n\n') && !chunkString.endsWith('[DONE]\n\n')) {
                     // This is a incomplete chunk, read the next chunk
+                    console.log('this is an imcomplete chunk, hold and read next chunk to merge...')
                     return read(chunkString)
                 }
 
-                chunkString.split('\n\n').forEach((line) => {
+                chunkString.split('\n').forEach((line) => {
                     try {
-                        //console.log(`trying chunkString line: ${line}`)
+                        
                         if (line.startsWith('data:') && !line.endsWith('[DONE]')) {
                             const responseJson = JSON.parse(line.substring(5).trim())
-                            //console.log(`. responseJson: ${JSON.stringify(responseJson)}`)
+                            
                             let responseToken = undefined
-                            if (dataSources.length === 0) {
-                                if (responseJson.choices.length > 0) {
-                                    responseToken = responseJson.choices[0].delta.content
-                                }
-                            } else {
-                                let role = responseJson.choices[0].messages[0].delta.role
-                                if (role === 'tool') {
-                                    toolContent = responseJson.choices[0].messages[0].delta.content
-                                } else {
-                                    responseToken = responseJson.choices[0].messages[0].delta.content
-                                    if (responseToken !== undefined) {
-                                        if (byodDocRegex.test(responseToken)) {
-                                            responseToken = responseToken.replace(byodDocRegex, '').trim()
-                                        }
+                            let responseMessage = undefined
 
-                                        if (responseToken === '[DONE]') {
-                                            responseToken = undefined
+                            if (url.endsWith('oaichat')) {
+                                responseMessage = responseJson.choices[0]
+                                if (dataSources.length === 0) {
+                                    if (responseJson.choices.length > 0) {
+                                        responseToken = responseMessage.delta.content
+                                        if (responseJson.thread_id !== undefined) {
+                                            thread_id = responseJson.thread_id
                                         }
                                     }
-                                }
+                                } else {
+                                    let role = responseJson.choices[0].messages[0].delta.role
+                                    if (role === 'tool') {
+                                        toolContent = responseJson.choices[0].messages[0].delta.content
+                                    } else {
+                                        responseToken = responseJson.choices[0].messages[0].delta.content
+                                        if (responseToken !== undefined) {
+                                            if (byodDocRegex.test(responseToken)) {
+                                                responseToken = responseToken.replace(byodDocRegex, '').trim()
+                                            }
+    
+                                            if (responseToken === '[DONE]') {
+                                                responseToken = undefined
+                                            }
+                                        }
+                                    }
+                                }    
+                            } else {
+                                responseToken = responseJson.delta.content[0].text.value
                             }
-
+                            
                             if (responseToken !== undefined && responseToken !== null) {
                                 assistantReply += responseToken // build up the assistant message
                                 displaySentence += responseToken // build up the display sentence
-
-                                // console.log(`Current token: ${responseToken}`)
 
                                 if (responseToken === '\n' || responseToken === '\n\n') {
                                     speak(spokenSentence.trim())
@@ -512,9 +513,13 @@ function handleUserQuery(userQuery) {
                                 }
                             }
                         }
+
                     } catch (error) {
                         console.log(`Error occurred while parsing the response: ${error}`)
                         console.log(chunkString)
+                    }
+                    if (line.startsWith('data:') && line.endsWith('[DONE]')) {
+                        return;
                     }
                 })
 
