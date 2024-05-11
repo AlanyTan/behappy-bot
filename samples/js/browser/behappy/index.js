@@ -35,6 +35,15 @@
         res.sendFile(path.join(__dirname, public_dir, rootHtml));
     });
 
+    // Health Check Endpoint
+    app.get('/health', (req, res) => {
+        res.status(200).send({
+            status: 'Healthy',
+            timestamp: new Date().toISOString()
+        });
+    });
+
+
     app.get('/api/get-speech-token', async (req, res, next) => {
         res.setHeader('Content-Type', 'application/json');
         const speechKey = process.env.SPEECH_KEY;
