@@ -28,6 +28,13 @@
     app.use(express.static(path.join(__dirname, public_dir)));
     app.use(express.json());
 
+    // serve static root html
+    app.get('/', function(req, res) {
+        const rootHtml = process.env.ROOT_HTML;
+        console.log(`Serving ${rootHtml} from ${__dirname}`);
+        res.sendFile(path.join(__dirname, public_dir, rootHtml));
+    });
+
     app.get('/api/get-speech-token', async (req, res, next) => {
         res.setHeader('Content-Type', 'application/json');
         const speechKey = process.env.SPEECH_KEY;
@@ -74,12 +81,6 @@
                 res.status(401).send('There was an error authorizing your speech key.');
             }
         }
-    });
-
-    // Endpoint to serve behappy.html
-    app.get('/behappy', function(req, res) {
-        console.log('Serving behappy.html' + __dirname);
-        res.sendFile(path.join(__dirname, public_dir, 'behappy.html'));
     });
 
     // Endpoint to chat with OpenAI chat endpoint
@@ -213,7 +214,8 @@
     // Add this to catch any request not handled by static or other routes
     app.use((req, res, next) => {
         console.log(`User requested unknown resource: ${req.url}`);
-        res.status(404).send('Not found');
+        //res.status(404).send('Not found');
+        res.redirect('/')
     });
 
     app.listen(8080, () => {

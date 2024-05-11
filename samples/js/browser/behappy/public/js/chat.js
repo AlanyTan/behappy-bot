@@ -17,6 +17,8 @@ var spokenTextQueue = []
 var sessionActive = false
 var lastSpeakTime
 var thread_id
+const currentEnv = window.location.hostname
+console.log(`Current environment: ${currentEnv}`)
 
 // Connect to avatar service
 function connectAvatar() {
@@ -67,20 +69,6 @@ function connectAvatar() {
         var sttLocales = document.getElementById('sttLocales').value.split(',')
         var autoDetectSourceLanguageConfig = SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages(sttLocales)
         speechRecognizer = SpeechSDK.SpeechRecognizer.FromConfig(speechRecognitionConfig, autoDetectSourceLanguageConfig, SpeechSDK.AudioConfig.fromDefaultMicrophoneInput())
-
-
-        dataSources = []
-        if (document.getElementById('enableOyd').checked) {
-            const azureCogSearchEndpoint = document.getElementById('azureCogSearchEndpoint').value
-            const azureCogSearchApiKey = document.getElementById('azureCogSearchApiKey').value
-            const azureCogSearchIndexName = document.getElementById('azureCogSearchIndexName').value
-            if (azureCogSearchEndpoint === "" || azureCogSearchApiKey === "" || azureCogSearchIndexName === "") {
-                alert('Please fill in the Azure Cognitive Search endpoint, API key and index name.')
-                return
-            } else {
-                setDataSources(azureCogSearchEndpoint, azureCogSearchApiKey, azureCogSearchIndexName)
-            }
-        }
 
         // Only initialize messages once
         if (!messageInitiated) {
@@ -209,6 +197,10 @@ function setupWebRTC(iceServerUrl, iceServerUsername, iceServerCredential) {
                 document.getElementById('remoteVideo').style.width = '0.1px'
             }
         }
+        if (peerConnection.iceConnectionState === 'failed') {
+            console.log("WebRTC failed. Disconnecting...");
+            disconnectAvatar()
+        }
     }
 
     // Offer to receive 1 audio, and 1 video track
@@ -256,30 +248,6 @@ function initMessages() {
     }
 }
 
-// Set data sources for chat API
-function setDataSources(azureCogSearchEndpoint, azureCogSearchApiKey, azureCogSearchIndexName) {
-    let dataSource = {
-        type: 'AzureCognitiveSearch',
-        parameters: {
-            endpoint: azureCogSearchEndpoint,
-            key: azureCogSearchApiKey,
-            indexName: azureCogSearchIndexName,
-            semanticConfiguration: '',
-            queryType: 'simple',
-            fieldsMapping: {
-                contentFieldsSeparator: '\n',
-                contentFields: ['content'],
-                filepathField: null,
-                titleField: 'title',
-                urlField: null
-            },
-            inScope: true,
-            roleInformation: document.getElementById('prompt').value
-        }
-    }
-
-    dataSources.push(dataSource)
-}
 
 // Do HTML encoding on given text
 function htmlEncode(text) {
@@ -707,13 +675,6 @@ window.microphone = () => {
         })
 }
 
-window.updataEnableOyd = () => {
-    if (document.getElementById('enableOyd').checked) {
-        document.getElementById('cogSearchConfig').hidden = false
-    } else {
-        document.getElementById('cogSearchConfig').hidden = true
-    }
-}
 
 window.updateTypeMessageBox = () => {
     if (document.getElementById('showTypeMessage').checked) {

@@ -12,15 +12,6 @@
 <h1 style="color: white; font-weight: bold;">Behappy, Together</h1>
 
 <div id="configuration" hidden>
-  <h2 style="background-color: rgb(232, 58, 235); width: 300px;">Azure Speech Resource</h2>
-  <label style="font-size: medium;" for="region">Region:</label>
-  <select id="region" style="font-size: medium;">
-    <option value="westus2">West US 2</option>
-    <option value="westeurope">West Europe</option>
-    <option value="southeastasia">Southeast Asia</option>
-  </select>
-  <label style="font-size: medium;" for="subscriptionKey">Subscription Key:</label>
-  <input id="subscriptionKey" type="password" size="32" style="font-size: medium;" />
   <div style="background-color: white; width: 300px;">
     <input type="checkbox" id="enablePrivateEndpoint" onchange = "window.updatePrivateEndpoint()">Enable Private Endpoint</input><br />
   </div>
@@ -31,21 +22,6 @@
 
   <label style="font-size: medium;"  for="prompt">System Prompt:</label><br/>
   <textarea id="prompt" style="width: 640px;">你先开始作自我介绍，包括你的名字，然后问用户的名字，接下去，使用用户的名字与其对话。</textarea>
-  <div style="background-color: white; width: 300px;">
-    <input type="checkbox" id="enableOyd" onchange="window.updataEnableOyd()">Enable On Your Data</input><br />
-  </div>
-  <br />
-
-  <div id="cogSearchConfig" hidden="hidden">
-    <h2 style="background-color: white; width: 400px;">Azure Cognitive Search Resource</h2>
-    <label style="font-size: medium;" for="azureCogSearchEndpoint">Endpoint:</label>
-    <input id="azureCogSearchEndpoint" type="text" size="64" style="font-size: medium;"></input><br />
-    <label style="font-size: medium;" for="azureCogSearchApiKey">API Key:</label>
-    <input id="azureCogSearchApiKey" type="password" size="32" style="font-size: medium;" /><br />
-    <label style="font-size: medium;" for="azureCogSearchIndexName">Index Name:</label>
-    <input id="azureCogSearchIndexName" type="text" size="32" style="font-size: medium;" /><br />
-    <br />
-  </div>
 
   <h2 style="background-color: white; width: 300px;">STT / TTS Configuration</h2>
   <label style="font-size: medium;" for="sttLocale">STT Locale(s):</label>
