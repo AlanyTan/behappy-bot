@@ -16,10 +16,11 @@ var isSpeaking = false
 var spokenTextQueue = []
 var sessionActive = false
 var lastSpeakTime
+var thread_id
 
 // Connect to avatar service
 function connectAvatar() {
-
+    console.log('Connecting to avatar service...')
     //const privateEndpointEnabled = document.getElementById('enablePrivateEndpoint').checked
     const privateEndpointEnabled = false
     const privateEndpoint = document.getElementById('privateEndpoint').value.slice(8)
@@ -49,6 +50,8 @@ function connectAvatar() {
         const avatarConfig = new SpeechSDK.AvatarConfig(talkingAvatarCharacter, talkingAvatarStyle)
         avatarConfig.customized = document.getElementById('customizedAvatar').checked
         avatarSynthesizer = new SpeechSDK.AvatarSynthesizer(speechSynthesisConfig, avatarConfig)
+        console.log('Avatar service connected.')
+
         avatarSynthesizer.avatarEventReceived = function (s, e) {
             var offsetMessage = ", offset from session start: " + e.offset / 10000 + "ms."
             if (e.offset === 0) {
@@ -371,6 +374,9 @@ function handleUserQuery(userQuery) {
         content: userQuery
     }
     console.log(`handleUserQuery: userQuery=${userQuery}`)
+    if (!sessionActive) {
+        connectAvatar()
+    }
     messages.push(chatMessage)
     let chatHistoryTextArea = document.getElementById('chatHistory')
     if (chatHistoryTextArea.innerHTML !== '' && !chatHistoryTextArea.innerHTML.endsWith('\n\n')) {
@@ -392,11 +398,6 @@ function handleUserQuery(userQuery) {
         speak(getQuickReply(), 2000)
     }
 
-    const azureOpenAIEndpoint = document.getElementById('azureOpenAIEndpoint').value
-    const azureOpenAIApiKey = document.getElementById('azureOpenAIApiKey').value
-    const azureOpenAIDeploymentName = document.getElementById('azureOpenAIDeploymentName').value
-
-    //let url = "{AOAIEndpoint}/openai/deployments/{AOAIDeployment}/chat/completions?api-version=2023-06-01-preview".replace("{AOAIEndpoint}", azureOpenAIEndpoint).replace("{AOAIDeployment}", azureOpenAIDeploymentName)
     let url = "/oaichat"
     let body = JSON.stringify({
         messages: messages,
@@ -404,8 +405,7 @@ function handleUserQuery(userQuery) {
     })
 
     if (dataSources.length > 0) {
-        //url = "{AOAIEndpoint}/openai/deployments/{AOAIDeployment}/extensions/chat/completions?api-version=2023-06-01-preview".replace("{AOAIEndpoint}", azureOpenAIEndpoint).replace("{AOAIDeployment}", azureOpenAIDeploymentName)
-        url = url,
+        url = url
         body = JSON.stringify({
             dataSources: dataSources,
             messages: messages,
@@ -421,7 +421,7 @@ function handleUserQuery(userQuery) {
     fetch(url, {
         method: 'POST',
         headers: {
-            'api-key': azureOpenAIApiKey,
+            'api-key': '',
             'Content-Type': 'application/json'
         },
         body: body
@@ -459,11 +459,15 @@ function handleUserQuery(userQuery) {
 
                 chunkString.split('\n\n').forEach((line) => {
                     try {
+                        //console.log(`trying chunkString line: ${line}`)
                         if (line.startsWith('data:') && !line.endsWith('[DONE]')) {
                             const responseJson = JSON.parse(line.substring(5).trim())
+                            //console.log(`. responseJson: ${JSON.stringify(responseJson)}`)
                             let responseToken = undefined
                             if (dataSources.length === 0) {
-                                responseToken = responseJson.choices[0].delta.content
+                                if (responseJson.choices.length > 0) {
+                                    responseToken = responseJson.choices[0].delta.content
+                                }
                             } else {
                                 let role = responseJson.choices[0].messages[0].delta.role
                                 if (role === 'tool') {

@@ -21,7 +21,7 @@
 
     // CORS options to allow microsoft resources
     const corsOptions = {
-        origin: ['http://localhost:3001', 'https://*.windows.net', 'https://*.microsoft.com', 'wss://*.microsoft.com'] // Add other domains as needed
+        origin: ['http://localhost:*', 'https://*.windows.net', 'https://*.microsoft.com', 'wss://*.microsoft.com'] // Add other domains as needed
     };
     app.use(cors(corsOptions));
     app.use(express.raw({ type: () => true, limit: '5mb' }));
@@ -122,6 +122,92 @@
             console.error('Error making API request:', error.message);
             res.status(500).send('Failed to communicate with the API');
         });
+    });
+    
+    // Endpoint to chat with OpenAI assistant endpoint
+    app.post('/api/oaiassistant', (req, res) => {
+        const oaiUrl = process.env.OPENAI_ENDPOINT;
+        const oaiKey = process.env.OPENAI_API_KEY;
+        const oaiModel = process.env.OPENAI_DEPLOYMENT_NAME;
+        const oaiAssistant = process.env.OPENAI_ASSISTANT_ID||oaiModel;
+        let API_URL = ''
+
+        function run_thread(thread_id, message){
+            // set message as the newest message to the thread and run it
+            API_URL = `${oaiUrl}/openai/threads/${thread_id}/messages?api-version=2024-02-15-preview`
+            try {
+                axios({
+                    method: 'post',
+                    url: API_URL,
+                    headers:{
+                        'api-key': oaiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    data: message
+                }).then(response => {
+                    let data = response.data
+                    API_URL = `${oaiUrl}/openai/threads/${thread_id}/runs?api-version=2024-02-15-preview`
+                    axios({
+                        method: 'post',
+                        url: API_URL,
+                        headers:{
+                            'api-key': oaiKey,
+                            'Content-Type': 'application/json'
+                        },
+                        data: {'assistant_id': `${oaiAssistant}`, 'stream': true},
+                        responseType: 'stream'  // This ensures the response is treated as a stream
+                    })
+                    .then(response => {
+                        // Setting response headers
+                        res.set(response.headers);
+                        
+                        // Status code forwarding
+                        res.status(response.status);
+                        
+                        // Stream the response body directly to the client
+                        response.data.pipe(res);
+                    })
+                    .catch(error => {
+                        // Error handling
+                        console.error('Error making API request:', error.message);
+                        res.status(500).send(`Failed to communicate with the API ${API_URL}`);
+                    });
+                })
+                .catch(error => {
+                        // Error handling
+                        console.error('Error making API request:', error.message);
+                        res.status(500).send(`Failed to communicate with the API ${API_URL}`);
+                })
+            } catch {
+                console.log("run_thread error")
+            }
+        }
+
+        // Set up the options for the HTTPS request to the other API
+        const old_body = JSON.parse(req.body.toString())
+        const last_message = old_body.messages[old_body.messages.length - 1]
+        let thread_id = old_body.thread_id
+        if (!thread_id) {
+            //if no thread_id yet, create a new thread
+            let API_URL = `${oaiUrl}openai/threads?api-version=2024-02-15-preview`
+            axios({
+                method: 'post',
+                url: API_URL,
+                headers:{
+                    'api-key': oaiKey,
+                    'Content-Type': 'application/json'
+                },
+                body:{}
+            }).then(response =>  {
+                let data = response.data
+                thread_id = data.id
+                run_thread(thread_id, last_message)
+
+            })
+        } else {
+            run_thread(thread_id, last_message)
+        }
+
     });
     
     // Add this to catch any request not handled by static or other routes

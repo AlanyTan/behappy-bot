@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Talking Avatar Chat Demo</title>
     <link href="/css/styles.css" rel="stylesheet">
+    <link rel="icon" href="image/favicon.ico" type="image/x-icon">
     <script src="https://aka.ms/csspeech/jsbrowserpackageraw" type="text/javascript"></script>
     <script src="/js/chat.js"></script>
 </head>
@@ -79,7 +80,7 @@
     <input type="checkbox" id="autoReconnectAvatar">Auto Reconnect</input><br />
   </div>
   <div style="background-color: white; width: 200px;">
-    <input type="checkbox" id="useLocalVideoForIdle" onchange="window.updateLocalVideoForIdle()">Use Local Video for Idle</input><br />
+    <input type="checkbox" id="useLocalVideoForIdle" onchange="window.updateLocalVideoForIdle()" checked>Use Local Video for Idle</input><br />
   </div>
   <br />
 </div>
@@ -100,6 +101,9 @@
         resize: none;
         background-color: transparent;
         overflow: hidden;" hidden></textarea>
+  </div>
+  <div id="localVideo" hidden>
+    <video src="video/lisa-casual-sitting-idle.mp4" autoplay loop muted></video>
   </div>
   <div id="remoteVideo"></div>
 </div>
